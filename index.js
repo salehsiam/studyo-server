@@ -2,7 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -33,7 +33,7 @@ async function run() {
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
     const assignmentCollection = client.db("studyo").collection("assignments");
-
+    //  Assignments APIs
     app.post("/assignments", async (req, res) => {
       const assignment = req.body;
       const result = await assignmentCollection.insertOne(assignment);
@@ -41,6 +41,12 @@ async function run() {
     });
     app.get("/assignments", async (req, res) => {
       const result = await assignmentCollection.find().toArray();
+      res.send(result);
+    });
+    app.get("/assignments/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await assignmentCollection.findOne(query);
       res.send(result);
     });
   } finally {
