@@ -32,7 +32,11 @@ async function run() {
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
+    // create collections
     const assignmentCollection = client.db("studyo").collection("assignments");
+    const submittedCollection = client
+      .db("studyo")
+      .collection("submitted-assignments");
     //  Assignments APIs
     app.post("/assignments", async (req, res) => {
       const assignment = req.body;
@@ -59,7 +63,7 @@ async function run() {
           photo: updatedAssignment.photo,
           title: updatedAssignment.title,
           marks: updatedAssignment.marks,
-          level: updatedAssignment.marks,
+          level: updatedAssignment.level,
           dueDate: updatedAssignment.dueDate,
           description: updatedAssignment.description,
         },
@@ -67,6 +71,55 @@ async function run() {
       const result = await assignmentCollection.updateOne(
         filter,
         assignment,
+        options
+      );
+      res.send(result);
+    });
+
+    app.delete("/assignment/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = assignmentCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // submitted assignment apis
+    app.post("/submittedAssignments", async (req, res) => {
+      const submitted = req.body;
+      const result = await submittedCollection.insertOne(submitted);
+      res.send(result);
+    });
+    app.get("/submittedAssignments", async (req, res) => {
+      const result = await submittedCollection.find().toArray();
+      res.send(result);
+    });
+    app.get("/submittedAssignments/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { creator_email: email };
+      const result = await submittedCollection.find(query).toArray();
+      res.send(result);
+    });
+    app.get("/my-assignment/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { examinee_email: email };
+      const result = await submittedCollection.find(query).toArray();
+      res.send(result);
+    });
+    app.put("/submittedAssignments/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const submittedMarks = req.body;
+      const updated = {
+        $set: {
+          marks: submittedMarks.marks,
+          feedback: submittedMarks.feedback,
+          status: submittedMarks.status,
+        },
+      };
+      const result = await submittedCollection.updateOne(
+        filter,
+        updated,
         options
       );
       res.send(result);
