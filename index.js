@@ -1,16 +1,38 @@
 require("dotenv").config();
-
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://studyo-7b463.web.app",
+      "https://studyo-7b463.firebaseapp.com/",
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json());
+app.use(cookieParser());
+const verifyToken = (req, res, next) => {
+  const token = req.cookies?.token;
+  if (!token) {
+    return req.status(401).send({ message: "unauthorized access" });
+  }
 
-// studyweb
-// bZcv1LSsz2Bzk8N7
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return req.status(401).send({ message: "unauthorized access" });
+    }
+    req.user = decoded;
+    next();
+  });
+};
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.bx9ca.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -26,9 +48,9 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
@@ -37,6 +59,28 @@ async function run() {
     const submittedCollection = client
       .db("studyo")
       .collection("submitted-assignments");
+
+    // authApi
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: "1h" });
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: false,
+        })
+        .send({ success: true });
+    });
+
+    app.post("/logout", (req, res) => {
+      res
+        .clearCookie("token", {
+          httpOnly: true,
+          secure: false,
+        })
+        .send({ success: true });
+    });
+
     //  Assignments APIs
     app.post("/assignments", async (req, res) => {
       const assignment = req.body;
@@ -47,6 +91,12 @@ async function run() {
       const result = await assignmentCollection.find().toArray();
       res.send(result);
     });
+    app.get("/features", async (req, res) => {
+      const cursor = assignmentCollection.find().limit(6);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+    // filter
     app.get("/assignments/easy", async (req, res) => {
       const query = { level: "easy" };
       const result = await assignmentCollection.find(query).toArray();
@@ -60,6 +110,16 @@ async function run() {
     app.get("/assignments/hard", async (req, res) => {
       const query = { level: "hard" };
       const result = await assignmentCollection.find(query).toArray();
+      res.send(result);
+    });
+    // search
+    app.get("/assignments/search", async (req, res) => {
+      const { query } = req.query;
+      const result = await assignmentCollection
+        .find({
+          title: { $regex: query, $options: "i" },
+        })
+        .toArray();
       res.send(result);
     });
 
@@ -105,13 +165,13 @@ async function run() {
       const result = await submittedCollection.insertOne(submitted);
       res.send(result);
     });
-    app.get("/submittedAssignments", async (req, res) => {
+    app.get("/submittedAssignments", verifyToken, async (req, res) => {
       const query = { status: "pending" };
       const result = await submittedCollection.find(query).toArray();
       res.send(result);
     });
 
-    app.get("/submittedAssignments/:email", async (req, res) => {
+    app.get("/submittedAssignments/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { creator_email: email, status: "pending" };
       const result = await submittedCollection.find(query).toArray();
