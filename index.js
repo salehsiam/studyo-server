@@ -47,6 +47,11 @@ async function run() {
       const result = await assignmentCollection.find().toArray();
       res.send(result);
     });
+    app.get("/assignments/easy", async (req, res) => {
+      const query = { level: "easy" };
+      const result = await assignmentCollection.find(query).toArray();
+      res.send(result);
+    });
     app.get("/assignment/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -90,21 +95,18 @@ async function run() {
       res.send(result);
     });
     app.get("/submittedAssignments", async (req, res) => {
-      const result = await submittedCollection.find().toArray();
+      const query = { status: "pending" };
+      const result = await submittedCollection.find(query).toArray();
       res.send(result);
     });
+
     app.get("/submittedAssignments/:email", async (req, res) => {
       const email = req.params.email;
-      const query = { creator_email: email };
+      const query = { creator_email: email, status: "pending" };
       const result = await submittedCollection.find(query).toArray();
       res.send(result);
     });
-    app.get("/my-assignment/:email", async (req, res) => {
-      const email = req.params.email;
-      const query = { examinee_email: email };
-      const result = await submittedCollection.find(query).toArray();
-      res.send(result);
-    });
+
     app.put("/submittedAssignments/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
@@ -122,6 +124,12 @@ async function run() {
         updated,
         options
       );
+      res.send(result);
+    });
+    app.get("/my-assignment/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { examinee_email: email };
+      const result = await submittedCollection.find(query).toArray();
       res.send(result);
     });
   } finally {
