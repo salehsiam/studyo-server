@@ -52,6 +52,17 @@ async function run() {
       const result = await assignmentCollection.find(query).toArray();
       res.send(result);
     });
+    app.get("/assignments/medium", async (req, res) => {
+      const query = { level: "medium" };
+      const result = await assignmentCollection.find(query).toArray();
+      res.send(result);
+    });
+    app.get("/assignments/hard", async (req, res) => {
+      const query = { level: "hard" };
+      const result = await assignmentCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.get("/assignment/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
