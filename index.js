@@ -59,6 +59,7 @@ async function run() {
     const submittedCollection = client
       .db("studyo")
       .collection("submitted-assignments");
+    const resourcesCollection = client.db("studyo").collection("resources");
 
     // authApi
     app.post("/jwt", async (req, res) => {
@@ -80,6 +81,17 @@ async function run() {
         })
         .send({ success: true });
     });
+    // resources apis
+    app.post("/resources", async (req, res) => {
+      const resources = req.body;
+      const result = await resourcesCollection.insertOne(resources);
+      res.send(result);
+    });
+
+    app.get("/resources", async (req, res) => {
+      const result = await resourcesCollection.find().toArray();
+      res.send(result);
+    });
 
     //  Assignments APIs
     app.post("/assignments", async (req, res) => {
@@ -88,11 +100,22 @@ async function run() {
       res.send(result);
     });
     app.get("/assignments", async (req, res) => {
+      const email = req.query.email;
+      let query = {};
+
+      if (email) {
+        query.creator_email = email;
+      }
       const result = await assignmentCollection.find().toArray();
       res.send(result);
     });
     app.get("/features", async (req, res) => {
-      const cursor = assignmentCollection.find().limit(6);
+      const cursor = assignmentCollection.find().limit(8);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+    app.get("/new-assignments", async (req, res) => {
+      const cursor = assignmentCollection.find().sort({ date: -1 }).limit(4);
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -165,13 +188,13 @@ async function run() {
       const result = await submittedCollection.insertOne(submitted);
       res.send(result);
     });
-    app.get("/submittedAssignments", verifyToken, async (req, res) => {
+    app.get("/submittedAssignments", async (req, res) => {
       const query = { status: "pending" };
       const result = await submittedCollection.find(query).toArray();
       res.send(result);
     });
 
-    app.get("/submittedAssignments/:email", verifyToken, async (req, res) => {
+    app.get("/submittedAssignments/:email", async (req, res) => {
       const email = req.params.email;
       const query = { creator_email: email, status: "pending" };
       const result = await submittedCollection.find(query).toArray();
